@@ -1,0 +1,25 @@
+{
+  "name": "audio-elements",
+  "version": "0.0.1",
+  "decription": "Polymer Audio API Element Collection",
+  "authors": "Nikita Andrejevich Seredkin",
+  "license": "MIT",
+  "keywords": [
+    "Audio",
+    "Web Audio API",
+    "polymer",
+    "web-components"
+  ],
+  "main": "audio-elements.html",
+  "dependencies": {
+    "polymer": "Polymer/polymer#^0.4.0",
+    "paper-slider": "Polymer/paper-slider#~0.4.2",
+    "core-dropdown-menu": "Polymer/core-dropdown-menu#~0.4.2",
+    "core-item": "Polymer/core-item#~0.4.2"
+  },
+  "ignore": [
+    "**/.*",
+    "test",
+    "tests"
+  ]
+}
