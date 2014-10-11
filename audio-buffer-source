@@ -1,0 +1,52 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<link rel="import" href="audio-node.html">
+<link rel="import" href="audio-param.html">
+
+<polymer-element name="audio-buffer-source" extends="audio-node">
+  <template>
+    <shadow></shadow>
+  </template>
+  <script>Polymer((function static(){
+    const sfx = window["::sfx::"];
+    const METHODS = {
+      start:{
+        value:function(){
+          this.node.start();
+          return this;
+        }
+      },
+      stop:{
+        value:function(){
+          this.node.stop();
+          return this;
+        }
+      },
+    };
+    const PROTOTYPE = {
+      publish:{
+        loop:false,
+        loopStart:0,
+        loopEnd:0,
+      },
+      typeChanged:function(o,n){
+        this.node.type = n;
+      },
+      ready:function(){
+        
+        this.node = sfx.createBufferSource();
+        this.start();
+        this.super();
+      },
+     
+      attached:function(){
+        this.connect(this.parentElement);
+      },
+    };
+    Object.defineProperties(PROTOTYPE,METHODS);
+    return PROTOTYPE;
+  })());
+  /*
+  */</script>
+</polymer-element>
+

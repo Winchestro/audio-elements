@@ -1,0 +1,50 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<polymer-element name="audio-buffer">
+  <script>Polymer((function static(){
+    const sfx = window["::sfx::"];
+    const METHODS = {
+      getChannelData:{
+        value:function(){
+          this.node.getChannelData();
+          return this;
+        }
+      },
+      copyFromChannel:{
+        value:function(){
+          this.node.copyFromChannel();
+          return this;
+        }
+      },
+      copyToChannel:{
+        value:function(){
+          this.node.copyToChannel();
+          return this;
+        }
+      },
+    };
+    const PROTOTYPE = {
+      publish:{
+        channels:2,
+        length:sfx.sampleRate * 2,
+        sampleRate:sfx.sampleRate,
+      },
+      observe:{
+        "channels":"createBuffer",
+        "length":"createBuffer",
+        "sampleRate":"createBuffer",
+      },
+      created:function(){
+        this.createBuffer();
+      },
+      createBuffer:function(){
+        this.node = sfx.createBuffer(this.channels,this.length,this.sampleRate);
+      },
+    };
+    Object.defineProperties(PROTOTYPE,METHODS);
+    return PROTOTYPE;
+  })());
+  /*
+  */</script>
+</polymer-element>
+

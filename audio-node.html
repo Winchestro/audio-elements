@@ -1,0 +1,160 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../paper-shadow/paper-shadow.html">
+<link rel="import" href="../core-tooltip/core-tooltip.html">
+<polymer-element name="audio-node">
+  <template>
+    <style>
+      :host{
+        display:block;
+        background:inherit;
+      }
+      #canvas{
+        border-radius: 50%;
+        box-shadow: 0 0 25px black inset;
+        background:inherit;
+      }
+    </style>
+    <core-tooltip label="{{node.constructor.name}}">
+      <canvas id="canvas" width="{{size}}" height="{{size}}" style="background:{{color}};"></canvas>
+    </core-tooltip>
+    
+  </template>
+  <script>Polymer((function static(){
+    const SFX = window["::sfx::"];
+    const ACCESSORS={
+      $CTX:{
+        get:function(){
+          return this.$.canvas.getContext("2d");
+        }
+      },
+      $INPUTS:{
+        get:function(){
+          return this.node.numberOfInputs;
+        }
+      },
+      $OUTPUTS:{
+        get:function(){
+          return this.node.numberOfOutputs;
+        }
+      },
+      $_output:{
+        get:function(){
+          return this.parentElement;
+        },
+        set:function(HTMLElement){
+          node.appendChild(this);
+        },
+      },
+      $_input:{
+        get:function(){
+          return Array.prototype.slice.call(this.children,0,this.$INPUTS);
+        },
+        set:function(HTMLElementCollection){
+          Array.prototype.slice.call(HTMLElementCollection).forEach(function(e){
+            this.appendChild(e);
+          });
+        },
+      },
+      $_chanelCount:{
+        get:function(){
+          return this.node.chanelCount;
+        },
+        set:function(v){
+          this.node.chanelCount=v;
+        }
+      },
+      $_chanelCountMode:{
+        get:function(){
+          return this.node.chanelCountMode;
+        },
+        set:function(v){
+          this.node.chanelCountMode=v;
+        }
+      },
+      $_chanelInterpretation:{
+        get:function(){
+          return this.node.chanelInterpretation;
+        },
+        set:function(v){
+          this.node.chanelInterpretation=v;
+        }
+      }
+    };
+    const METHODS={
+      connect:{
+        value:function(target){
+          if(this.visualize){
+            this.node.connect(this.analyser);
+            if(target.visualize){
+              this.analyser.connect(target.analyser);
+              target.analyser.connect(target.node);
+            }else{
+              this.analyser.connect(target.node);
+            }
+          }else this.node.connect(target.node);
+          return this;
+        }
+      },
+      disconnect:{
+        value:function(){
+          this.node.disconnect();
+          return this;
+        }
+      }
+    };
+    const PROTOTYPE = {
+      publish:{
+        size:75,
+        visualize:true,
+        controls:true,
+        color:"white",
+      },
+      observe:{
+      },
+      created:function(){
+
+      },
+      ready:function(){
+        this.startVisualizationLoop();
+      },
+      domReady:function(){
+         
+      },
+      startVisualizationLoop:function(){
+        this.analyser   = SFX.createAnalyser();
+        this.timeDomain = new Uint8Array(this.analyser.frequencyBinCount);
+        const C = this.$CTX;
+        const A = this.analyser;
+        const T = this.timeDomain;
+        const S = this.size;
+        var i,n;
+        C.strokeStyle = "white";
+        C.lineJoin = "round";
+        C.lineWidth = Math.sqrt(S)/5;
+        drawLoop();
+        function drawLoop(){
+          A.getByteTimeDomainData(T);
+          C.clearRect(0,0,S,S);
+          C.beginPath();
+          C.moveTo(S/2,-S/25);
+          for(i = 0; i<S; i++){
+            n = (T.length / S * i)>>0;
+            C.lineTo(T[n%T.length]/256*S*.5+S/4,i);
+          }
+          C.stroke();
+          requestAnimationFrame(drawLoop);
+        }
+      },
+      attached:function(){
+      },
+      detached:function(){
+      }
+    };
+    Object.defineProperties(PROTOTYPE,ACCESSORS);
+    Object.defineProperties(PROTOTYPE,METHODS);
+    return PROTOTYPE;
+  })());
+  /*
+
+  */</script>
+</polymer-element>

@@ -1,0 +1,118 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../core-ajax/core-ajax.html">
+<link rel="import" href="file-reader-midi.html">
+
+<polymer-element name="file-loader">
+  <template>
+    <core-ajax id="xhr" auto url="{{src}}" handleAs="arraybuffer" on-core-response="{{readFile}}"></core-ajax>
+    <file-reader-midi id="midiReader" rawSource="{{rawString}}"></file-reader-midi>
+  </template>
+  <script>Polymer((function static(){
+    const ACCESSORS = {
+      
+    };
+
+    const PROTOTYPE= {
+      publish:{
+        src:""
+      },
+      readFile:function(e,d,t){
+
+        this.rawString = [].slice.call(new Uint8Array(d.response)).map(function(e){return String.fromCharCode(e);}).join("");
+      }
+    };
+    Object.defineProperties(PROTOTYPE,ACCESSORS);
+    return PROTOTYPE;
+  })())/*
+  srcChanged:function(oldV,newV){
+        const $ = this;
+        //console.log("loading",newV)
+        this.loadBuffer(newV).then(function(buffer){
+          $.buffer = buffer;
+          $.processBuffer();
+          
+        });
+  },
+  $fileDefinitions:{
+    get:function(){
+      const map = Object.create(null);
+      [].slice.call(this.children)
+      .filter(function(e){return "fileDefinition" in e})
+      .forEach(function(e){
+        for(def in e.fileDefinition){
+          map[def]=e.fileDefinition[def];
+        }
+      })
+      ;
+      return map;
+    }
+  }
+  domReady:function(){
+    if(this.buffer)this.processBuffer();
+    },
+    loadBuffer:function(path){
+      return new Promise(function(res,err){
+        var xhr = new XMLHttpRequest;
+        xhr.open("GET",path);
+        xhr.responseType="arraybuffer";
+        xhr.onreadystatechange=function(){
+          if(xhr.readyState===xhr.DONE){
+            if(xhr.status === 200){
+              res(xhr.response);
+            }else{
+              err(new Error(xhr.status));
+            }
+          }
+        }
+        xhr.send();
+      });
+    }
+    processBuffer:function(buffer){
+        var pos           = 0;
+        const RAW         = buffer || this.buffer;
+        const DEFS        = this.$fileDefinitions;
+        const HEADER      = $hash(new Uint8Array(RAW,pos,4));     pos+=4;
+        const HEADERSIZE  = $sum8(new Uint8Array(RAW,pos,4));     pos+=4;
+        const HEADERARGS  = new Uint8Array(RAW,pos,HEADERSIZE);   pos+=HEADERSIZE;
+        //const DATA        = new Uint8Array(RAW);
+        
+
+
+        
+        if(HEADER in DEFS){
+          const READER = Object.create(null);
+          var FILE = DEFS[HEADER].apply(READER,HEADERARGS);
+          
+          for(method in READER){
+            var chunk = $hash(new Uint8Array(RAW,pos,method.length));
+            var chunkArgs = new Uint8Array(RAW,pos+method.length,READER[method].length);
+            console.log(chunk,chunkArgs);
+            if(chunk in READER){
+              pos += method.length+READER[method].length;
+              var FILE = READER[chunk](chunkArgs);
+              console.log("track found");
+              break;
+            }
+          }
+
+        }else{
+          console.error("File Format not defined");
+        }
+        console.log(FILE,READER);
+        function $hash(array,multiple){
+          return String.fromCharCode.apply(null,multiple?arguments:array.length?array:[array]);
+        }
+        function $sum8(){
+          var args
+          arguments.length>1?
+          args = [].slice.call(arguments):
+          args = [].slice.call(arguments[0]);
+          var result;
+          while(args.length){
+            result=result<<8|args.shift();
+          }
+          return result;
+        }
+      },
+  */</script>
+</polymer-element>

@@ -1,0 +1,92 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<link rel="import" href="../paper-slider/paper-slider.html">
+
+<polymer-element name="audio-param">
+  <template>
+    <style>
+      paper-slider{
+        width:inherit;
+        display:block;
+      }
+    </style>
+    <paper-slider pin id="value" immediateValue="{{value}}" min="{{node.minValue}}" max="{{node.maxValue}}"></paper-slider>
+    
+  </template>
+  <script>Polymer((function static(){
+    const METHODS = {
+      cancelScheduledValues:{
+        value:function(){
+          this.node.cancelScheduledValues();
+          return this;
+        }
+      },
+      exponentialRampToValueAtTime:{
+        value:function(){
+          this.node.exponentialRampToValueAtTime();
+          return this;
+        }
+      },
+      linearRampToValueAtTime:{
+        value:function(){
+          this.node.linearRampToValueAtTime();
+          return this;
+        }
+      },
+      setTargetAtTime:{
+        value:function(){
+          this.node.setTargetAtTime();
+          return this;
+        }
+      },
+      setValueAtTime:{
+        value:function(value,startTime){
+          this.node.setValueAtTime(value,startTime);
+          return this;
+        }
+      },
+      setValueCurveAtTime:{
+        value:function(){
+          this.node.setValueCurveAtTime();
+          return this;
+        }
+      },
+      midiToFrequency:{
+        value:function(note) {
+          return 440 * Math.pow(2, (note-69)/12);
+        }
+      },
+    };
+
+    const PROTOTYPE = {
+      publish:{
+        value:0,
+        min:0,
+        max:100,
+        kRate:false,
+        node:null,
+        file:null,
+        track:0,
+      },
+      valueChanged:function(oldv,newv){
+        this.node.value = newv;
+      },
+      fileChanged:function(oldv,midi){
+        if(midi)this.$.value.style.display="none";
+        const deltaTime = midi.header.ticksPerBeat;
+        const track = midi.tracks[this.track||0];
+
+        track.filter(function(event,i){
+          return event.subtype === "noteOn";
+        }).forEach(function(noteOn,i){
+          //console.log(noteOn);
+          this.node.setValueAtTime(this.midiToFrequency(noteOn.noteNumber),(noteOn.deltaTime/deltaTime)+(i*deltaTime/1000));
+        },this);
+      }
+    };
+    Object.defineProperties(PROTOTYPE,METHODS);
+    return PROTOTYPE;
+  })())/*
+  
+  */</script>
+</polymer-element>

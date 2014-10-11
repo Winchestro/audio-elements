@@ -1,0 +1,397 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="file-source-string.html">
+
+<polymer-element name="file-reader-midi">
+  <template></template>
+  <script>Polymer((function static(){
+    const METHODS = {
+      readChunk:{
+        value:function(){
+          const stream = this.reader;
+          const id = stream.read(4);
+          const length = stream.readInt32();
+          const data = stream.read(length);
+          return {
+            'id': id,
+            'length': length,
+            'data': data
+          }
+        }
+      },
+      readEvent:{
+        value:function(){
+          var lastEventTypeByte;
+          const stream = this.reader;
+          const event = {
+            deltaTime: stream.readVarInt()
+          };
+          var eventTypeByte = stream.readInt8();
+          if ((eventTypeByte & 0xf0) == 0xf0) {
+            /* system / meta event */
+            if (eventTypeByte == 0xff) {
+              /* meta event */
+              event.type = 'meta';
+              var subtypeByte = stream.readInt8();
+              var length = stream.readVarInt();
+              switch(subtypeByte) {
+                case 0x00:
+                  event.subtype = 'sequenceNumber';
+                  if (length != 2) throw "Expected length for sequenceNumber event is 2, got " + length;
+                  event.number = stream.readInt16();
+                  return event;
+                case 0x01:
+                  event.subtype = 'text';
+                  event.text = stream.read(length);
+                  return event;
+                case 0x02:
+                  event.subtype = 'copyrightNotice';
+                  event.text = stream.read(length);
+                  return event;
+                case 0x03:
+                  event.subtype = 'trackName';
+                  event.text = stream.read(length);
+                  return event;
+                case 0x04:
+                  event.subtype = 'instrumentName';
+                  event.text = stream.read(length);
+                  return event;
+                case 0x05:
+                  event.subtype = 'lyrics';
+                  event.text = stream.read(length);
+                  return event;
+                case 0x06:
+                  event.subtype = 'marker';
+                  event.text = stream.read(length);
+                  return event;
+                case 0x07:
+                  event.subtype = 'cuePoint';
+                  event.text = stream.read(length);
+                  return event;
+                case 0x20:
+                  event.subtype = 'midiChannelPrefix';
+                  if (length != 1) throw "Expected length for midiChannelPrefix event is 1, got " + length;
+                  event.channel = stream.readInt8();
+                  return event;
+                case 0x2f:
+                  event.subtype = 'endOfTrack';
+                  if (length != 0) throw "Expected length for endOfTrack event is 0, got " + length;
+                  return event;
+                case 0x51:
+                  event.subtype = 'setTempo';
+                  if (length != 3) throw "Expected length for setTempo event is 3, got " + length;
+                  event.microsecondsPerBeat = (
+                    (stream.readInt8() << 16)
+                    + (stream.readInt8() << 8)
+                    + stream.readInt8()
+                  )
+                  return event;
+                case 0x54:
+                  event.subtype = 'smpteOffset';
+                  if (length != 5) throw "Expected length for smpteOffset event is 5, got " + length;
+                  var hourByte = stream.readInt8();
+                  event.frameRate = {
+                    0x00: 24, 0x20: 25, 0x40: 29, 0x60: 30
+                  }[hourByte & 0x60];
+                  event.hour = hourByte & 0x1f;
+                  event.min = stream.readInt8();
+                  event.sec = stream.readInt8();
+                  event.frame = stream.readInt8();
+                  event.subframe = stream.readInt8();
+                  return event;
+                case 0x58:
+                  event.subtype = 'timeSignature';
+                  if (length != 4) throw "Expected length for timeSignature event is 4, got " + length;
+                  event.numerator = stream.readInt8();
+                  event.denominator = Math.pow(2, stream.readInt8());
+                  event.metronome = stream.readInt8();
+                  event.thirtyseconds = stream.readInt8();
+                  return event;
+                case 0x59:
+                  event.subtype = 'keySignature';
+                  if (length != 2) throw "Expected length for keySignature event is 2, got " + length;
+                  event.key = stream.readInt8(true);
+                  event.scale = stream.readInt8();
+                  return event;
+                case 0x7f:
+                  event.subtype = 'sequencerSpecific';
+                  event.data = stream.read(length);
+                  return event;
+                default:
+                  // console.log("Unrecognised meta event subtype: " + subtypeByte);
+                  event.subtype = 'unknown'
+                  event.data = stream.read(length);
+                  return event;
+              }
+              event.data = stream.read(length);
+              return event;
+            } else if (eventTypeByte == 0xf0) {
+              event.type = 'sysEx';
+              var length = stream.readVarInt();
+              event.data = stream.read(length);
+              return event;
+            } else if (eventTypeByte == 0xf7) {
+              event.type = 'dividedSysEx';
+              var length = stream.readVarInt();
+              event.data = stream.read(length);
+              return event;
+            } else {
+              throw "Unrecognised MIDI event type byte: " + eventTypeByte;
+            }
+          } else {
+            /* channel event */
+            var param1;
+            if ((eventTypeByte & 0x80) == 0) {
+              /* running status - reuse lastEventTypeByte as the event type.
+                eventTypeByte is actually the first parameter
+              */
+              param1 = eventTypeByte;
+              eventTypeByte = lastEventTypeByte;
+            } else {
+              param1 = stream.readInt8();
+              lastEventTypeByte = eventTypeByte;
+            }
+            var eventType = eventTypeByte >> 4;
+            event.channel = eventTypeByte & 0x0f;
+            event.type = 'channel';
+            switch (eventType) {
+              case 0x08:
+                event.subtype = 'noteOff';
+                event.noteNumber = param1;
+                event.velocity = stream.readInt8();
+                return event;
+              case 0x09:
+                event.noteNumber = param1;
+                event.velocity = stream.readInt8();
+                if (event.velocity == 0) {
+                  event.subtype = 'noteOff';
+                } else {
+                  event.subtype = 'noteOn';
+                }
+                return event;
+              case 0x0a:
+                event.subtype = 'noteAftertouch';
+                event.noteNumber = param1;
+                event.amount = stream.readInt8();
+                return event;
+              case 0x0b:
+                event.subtype = 'controller';
+                event.controllerType = param1;
+                event.value = stream.readInt8();
+                return event;
+              case 0x0c:
+                event.subtype = 'programChange';
+                event.programNumber = param1;
+                return event;
+              case 0x0d:
+                event.subtype = 'channelAftertouch';
+                event.amount = param1;
+                return event;
+              case 0x0e:
+                event.subtype = 'pitchBend';
+                event.value = param1 + (stream.readInt8() << 7);
+                return event;
+              default:
+                throw "Unrecognised MIDI event type: " + eventType
+                /* 
+                console.log("Unrecognised MIDI event type: " + eventType);
+                stream.readInt8();
+                event.subtype = 'unknown';
+                return event;
+                */
+            }
+          }
+        }
+      },
+      readFileHeader:{
+        value:function(data){
+          const stream = this.reader;
+          stream.source = data;
+          const headerChunk = this.readChunk();
+          
+          if (headerChunk.id != 'MThd' || headerChunk.length != 6)
+            throw "Bad .mid file - header not found";
+
+          return {
+            "headerChunk":headerChunk,
+            "fileData": stream.source
+          }
+        }
+      },
+      readHeaderChunk:{
+        value:function(headerChunk){
+          const stream = this.reader;
+          stream.source = headerChunk.data;
+
+          const formatType = stream.readInt16();
+          const trackCount = stream.readInt16();
+          const timeDivision = stream.readInt16();
+          if (timeDivision & 0x8000)
+            throw "Expressing time division in SMTPE frames is not supported yet"
+          else
+            const ticksPerBeat = timeDivision;
+          
+          return {
+            'formatType': formatType,
+            'trackCount': trackCount,
+            'ticksPerBeat': ticksPerBeat,
+          }
+        }
+      },
+      readTrackHeader:{
+        value:function(data){
+          const stream = this.reader;
+          stream.source = data;
+          const trackChunk = this.readChunk();
+          if (trackChunk.id != 'MTrk') {
+            throw "Unexpected chunk - expected MTrk, got "+ trackChunk.id;
+          }
+          return {
+            "trackChunk":trackChunk,
+            "fileData":stream.source
+          }
+        }
+      },
+      readTrackChunk:{
+        value:function(trackChunk){
+          const track = [];
+          const stream = this.reader;
+          stream.source = trackChunk.data;
+          // var trackStream = Stream(trackChunk.data);
+          while (!stream.eof()) {
+            var event = this.readEvent();
+            track.push(event);
+            //console.log(event);
+          }
+          return track;
+        }
+      },
+    };
+
+    
+    const PROTOTYPE={
+      publish:{
+        rawSource:"",
+        file:null,
+      },
+      rawSourceChanged:function(oldV,newV) {
+        
+        if(this.reader){
+          var reader = this.reader;  
+        }else{
+          var reader = new fileSourceString();
+          this.reader = reader;
+          this.shadowRoot.appendChild(reader);
+        }
+        const fileHeader = this.readFileHeader(newV);
+        const header = this.readHeaderChunk(fileHeader.headerChunk);
+
+        var data = fileHeader.fileData;
+        const tracks = [];
+        for (var i = 0; i < header.trackCount; i++) {
+          var trackHeader = this.readTrackHeader(data);
+          tracks.push(this.readTrackChunk(trackHeader.trackChunk));
+          data = trackHeader.fileData;
+        }
+        
+        this.file = new MIDI(header,tracks);
+        this.fire("file-read-complete",this.file);
+        function MIDI(header,tracks){
+          this.header = header;
+          this.tracks = tracks;
+        }
+      }
+    };
+    Object.defineProperties(PROTOTYPE,METHODS);
+    return PROTOTYPE;
+  })())
+/*
+    const $define = Object.defineProperty;
+    
+    function MIDI(fileFormat,numberOfTracks,deltaTime){
+      this.fileFormat = fileFormat;
+      this.numberOfTracks = numberOfTracks;
+      this.deltaTime = deltaTime;
+    }
+    function Track(length){
+      this.length = length;
+    }
+    $constants.call(MIDI.prototype,{
+      SINGLE_TRACK:0,
+      MULTIPLE_TRACKS_SYNC:1,
+      MULTIPLE_TRACKS_ASYNC:2
+    });
+
+    const FILEDEF = $define(
+      $null(),
+      $hash(0x4D,0x54,0x68,0x64),
+      $var(function midiHeader(f1,f2,n1,n2,d1,d2){
+        const INSTANCE = new MIDI(
+          $add(f1,f2),
+          $add(n1,n2),
+          $add(d1,d2)
+        );
+        INSTANCE.tracks = [];
+
+        $define(
+          this,
+          $hash(0x4D,0x54,0x72,0x6B),
+          $var(function trackChunk(L1,L2,L3,L4){
+            const TRACK = new Track($sum8(arguments));
+            
+           
+
+            INSTANCE.tracks.push(TRACK)
+            return INSTANCE;
+          })
+        );
+        //console.log(this);
+        //byteoffset
+        return INSTANCE;
+    }));
+  
+    const PROTOTYPE = {
+      fileDefinition:FILEDEF
+    };
+    return PROTOTYPE;
+    function $sum8(){
+      var args
+      arguments.length>1?
+      args = [].slice.call(arguments):
+      args = [].slice.call(arguments[0]);
+      var result;
+      while(args.length){
+        result=result<<8|args.shift();
+      }
+      return result;
+    }
+    function $null(d){
+      return Object.create(null,d);
+    }
+    function $constants(hash){
+      for(key in hash)$define(this,key,$const(hash[key]));
+      return this;
+    }
+    function $variables(hash){
+      for(key in hash)$define(this,key,$var(hash[key]));
+      return this;
+    }
+    function $hash(array,multiple){
+      return String.fromCharCode.apply(null,multiple?arguments:array.length?array:[array]);
+    }
+    function $get(val){
+      return {get:val};
+    }
+    function $set(val){
+      return {set:val};
+    }
+    function $const(val){
+      return {value:val};
+    }
+    function $var(val){
+      return {enumerable:true,writable:true,configurable:true,value:val};
+    }
+    function $prop(val){
+      return {writable:true,configurable:true,value:val};
+    }
+*/</script>
+</polymer-element>

@@ -1,0 +1,76 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<polymer-element name="file-source-string" constructor="fileSourceString">
+  <script>Polymer((function static(){
+	const ACCESSORS = {
+		source:{
+			set:function(data){
+				this.str = data.split("");
+			},
+			get:function(){
+				return this.str.join("");
+			}
+		}
+	};
+	const METHODS={
+		read:{
+			value:function(length) {
+				return this.str.splice(0,length).join("");
+			}
+		},
+		readInt32:{
+			value:function() {
+				return (
+					(this.str.shift().charCodeAt() << 3*8) + 
+					(this.str.shift().charCodeAt() << 2*8) +
+					(this.str.shift().charCodeAt() << 1*8) + 
+					(this.str.shift().charCodeAt() << 0*8)
+				);
+			}
+		},
+		readInt16:{
+			value:function() {
+				return (
+					(this.str.shift().charCodeAt() << 1*8) + 
+					(this.str.shift().charCodeAt() << 0*8)
+				);
+			}
+		},
+		readInt8:{
+			value:function(signed) {
+				var result = this.str.shift().charCodeAt();
+				if(signed&&result>127)result-=256;
+				return result;
+			}
+		},
+		eof:{
+			value:function() {
+				return this.str.length <= 0;
+			}
+		},
+		readVarInt:{
+			value:function() {
+				var result = 0;
+				while (true) {
+					var b = this.readInt8();
+					if (b & 0x80) {
+						result += (b & 0x7f);
+						result <<= 7;
+					} else {
+						/* b is the last byte */
+						return result + b;
+					}
+				}
+			}
+		},
+	};
+	const PROTOTYPE={
+		
+	};
+	Object.defineProperties(PROTOTYPE,ACCESSORS); 
+	Object.defineProperties(PROTOTYPE,METHODS);
+	return PROTOTYPE;
+})())/*
+    
+  */</script>
+</polymer-element>

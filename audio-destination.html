@@ -1,0 +1,38 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<link rel="import" href="audio-node.html">
+<link rel="import" href="audio-param.html">
+
+<polymer-element name="audio-destination" extends="audio-node">
+  <template>
+    <style>
+    </style>
+    <div id="containerMain" layout horizontal center-justified>
+      <shadow></shadow>
+    </div>
+    <div id="containerNodes" layout horizontal center-justified>
+      <content></content>
+    </div>
+  </template>
+  <script>Polymer((function static(){
+    const SFX = window["::sfx::"];
+    const ACCESSORS = {
+      $CHILD:{
+        get:function(){
+          return this.children[0];
+        }
+      },
+    };
+    const PROTOTYPE = {
+      created:function(){
+        this.node = SFX.destination;
+        this.color="yellowgreen";
+      },
+    };
+    Object.defineProperties(PROTOTYPE,ACCESSORS);
+    return PROTOTYPE;
+  })());
+  /*
+
+  */</script>
+</polymer-element>

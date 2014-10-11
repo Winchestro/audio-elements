@@ -1,0 +1,108 @@
+<link rel="import" href="../polymer/polymer.html">
+
+
+<link rel="import" href="../paper-tabs/paper-tabs.html">
+<link rel="import" href="../core-dropdown-menu/core-dropdown-menu.html">
+<link rel="import" href="../core-item/core-item.html">
+<link rel="import" href="../core-menu/core-menu.html">
+
+<link rel="import" href="../core-menu/core-submenu.html">
+<link rel="import" href="../core-field/core-field.html">
+
+<link rel="import" href="audio-node.html">
+<link rel="import" href="file-loader.html">
+<link rel="import" href="audio-param.html">
+
+<polymer-element name="audio-oscillator" extends="audio-node">
+  <template>
+    <style>
+      #controls{
+        background:inherit;
+      }
+      #waveForm{
+        border-radius:15px 0 0 0;
+        margin:0 0 0 5px;
+      }
+    </style>
+    
+      <shadow></shadow>
+   
+    <file-loader src="{{src}}" on-file-read-complete="{{fileLoaded}}">
+    </file-loader>
+    <div id="controls" layout vertical flex>
+      <template bind="{{node}}">
+        <audio-param id="frequencyNode" node="{{frequency}}" file="{{file}}" track="{{track}}">
+        </audio-param>
+        <audio-param id="detuneNode" node="{{detune}}">
+        </audio-param>
+      </template>
+        <core-dropdown-menu id="waveForm" flex selected="{{type}}" valueattr="label">
+          <core-item label="sine"></core-item>
+          <core-item label="triangle"></core-item>
+          <core-item label="sawtooth"></core-item>
+          <core-item label="square"></core-item>
+        </core-dropdown-menu>
+    </div>
+  </template>
+  <script>Polymer((function static(){
+    const sfx = window["::sfx::"];
+    const METHODS = {
+      start:{
+        value:function(){
+          this.node.start();
+          return this;
+        }
+      },
+      stop:{
+        value:function(){
+          this.node.stop();
+          return this;
+        }
+      },
+      setPeriodicWave:{
+        value:function(){
+          this.node.setPeriodicWave();
+          return this;
+        }
+      },
+    };
+    const PROTOTYPE = {
+      publish:{
+        track:0,
+        src:"",
+        type:"sine",
+        frequency:0,
+        detune:0,
+      },
+      frequencyChanged:function(o,n){
+        this.node.frequency.value = n;
+      },
+      detuneChanged:function(o,n){
+        this.node.detune.value = n;
+      },
+      typeChanged:function(o,n){
+        this.node.type = n;
+      },
+      ready:function(){
+        
+        this.node = sfx.createOscillator();
+        this.color ="#49F";
+        this.start();
+        this.super();
+      },
+     
+      attached:function(){
+        this.connect(this.parentElement);
+      },
+      fileLoaded:function(e,d,t){
+        this.node.file = d;
+        this.node.track = this.track;
+      }
+    };
+    Object.defineProperties(PROTOTYPE,METHODS);
+    return PROTOTYPE;
+  })());
+  /*
+  */</script>
+</polymer-element>
+
